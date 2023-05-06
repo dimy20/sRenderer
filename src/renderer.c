@@ -20,6 +20,7 @@ Triangle * cube_triangles = NULL;
 #define FOV_FACTOR 500
 static const double frame_target_time = 1.0 / (double)TARGET_FPS;
 static double rot_angle = 0.0;
+static Vec3f camera_position = {0, 0, 0};
 
 // screen space translations
 static const int screen_y = WINDOW_H / 2;
@@ -50,25 +51,40 @@ static void R_update(){
 
 	cube_triangles = NULL;
 
+	Vec3f transformed_vertices[3];
 	//memset(cube_triangles, 0, sizeof(Triangle) * CUBE_NUM_FACES);
 	// 3 projected screen vertices coming out of this process for each face
 	for(int i = 0; i < darray_length(cube->faces); i++){
 
 		const Face * face = &cube->faces[i];
 		Triangle face_triangle;
-		//Triangle * face_triangle = &cube_triangles[i];
-
+		memset(transformed_vertices, 0, sizeof(Vec3f) * 3);
 		// transforme and project each face vertex.
 		for(int j = 0; j < 3; j++){
 			// apply transformations
 			Vec3f vertex = cube->vertices[face->indices[j] - 1];
+			transformed_vertices[j] = Vec3f_rotate_x(vertex, rot_angle);
+			transformed_vertices[j] = Vec3f_rotate_z(transformed_vertices[j], rot_angle);
+			transformed_vertices[j].z += 5.0;
+		}
 
-			Vec3f transformed_vertex = Vec3f_rotate_x(vertex, rot_angle);
-			//transformed_vertex = Vec3f_rotate_z(transformed_vertex, rot_angle);
-			transformed_vertex.z -= -5.0;
+		// backface culling test
+		Vec3f vec_a = transformed_vertices[0];
+		Vec3f vec_b = transformed_vertices[1];
+		Vec3f vec_c = transformed_vertices[2];
 
-			//face_triangle->projected_points[j] = project(transformed_vertex);
-			face_triangle.projected_points[j] = project(transformed_vertex);
+		Vec3f vec_ab = Vec3f_sub(vec_b, vec_a);
+		Vec3f vec_ac = Vec3f_sub(vec_c, vec_a);
+
+		Vec3f normal = Vec3f_cross(vec_ab, vec_ac);
+		Vec3f camera_dir = Vec3f_sub(camera_position, vec_a);
+
+		if(Vec3f_dot(normal, camera_dir) < 0){
+			continue;
+		};
+
+		for(int j = 0; j < 3; j++){
+			face_triangle.projected_points[j] = project(transformed_vertices[j]);
 		}
 
 		darray_push(cube_triangles, face_triangle);
@@ -103,7 +119,6 @@ void R_cap_fps(){
 	double elapsed_secs = (now - prev_time) / (double)(clock_frequency);
 
 	if(elapsed_secs < frame_target_time){
-	//	printf("%f\n", elapsed_secs);
 		SDL_Delay((uint32_t)((frame_target_time - elapsed_secs) * 1000));
 	}
 
@@ -115,7 +130,7 @@ void R_run(int window_w, int window_h){
 	fb = Fbuffer_create(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
-	cube = Obj_load("assets/f22.obj");
+	cube = Obj_load("assets/cube.obj");
 
 	while(running){
 		R_input();

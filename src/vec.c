@@ -25,9 +25,9 @@ inline Vec3f Vec3f_rotate_y(const Vec3f v, double angle){
 
 inline Vec3f Vec3f_cross(Vec3f a, Vec3f b){
 	double x, y, z;
-	x = (a.y * b.z) - (b.y * a.z);
-	y = (a.x * b.z) - (b.x * a.z);
-	z = (a.x * b.y) - (b.x * a.y);
+	x = a.y*b.z - a.z*b.y;
+	y = a.z*b.x - a.x*b.z;
+	z = a.x*b.y - a.y*b.x;
 	return (Vec3f){.x = x, .y = y, .z = z};
 };
 
@@ -47,7 +47,7 @@ inline Vec3f Vec3f_mul(Vec3f a, double t){
 	return (Vec3f){.x = a.x * t, .y = a.y * t, .z = a.z * t};
 }
 
-inline double vec3f_dot(Vec3f a, Vec3f b){
+inline double Vec3f_dot(Vec3f a, Vec3f b){
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
