@@ -36,6 +36,12 @@ Model * Obj_load(const char * filename){
 					&face.indices[1], &texture_indices[1], &normal_indices[1],
 					&face.indices[2], &texture_indices[2], &normal_indices[2]);
 
+			uint8_t r, b, g;
+			r = rand() % 0xff;
+			g = rand() % 0xff;
+			b = rand() % 0xff;
+			face.color = pack_color(r, g, b);
+
 			darray_push(model->faces, face);
 		}
 	}
