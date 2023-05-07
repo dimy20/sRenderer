@@ -10,9 +10,6 @@
 #include "darray.h"
 #include "obj.h"
 
-// for testing
-Triangle * cube_triangles = NULL;
-
 /* Constants */
 #define WINDOW_W 800
 #define WINDOW_H 600
@@ -30,12 +27,15 @@ static const int screen_x = WINDOW_W / 2;
 static bool running = false;
 static Fbuffer * fb = NULL;
 uint64_t prev_time;
-const Model * cube = NULL;
+
+// just for testing
+Model * cube = NULL;
+Proj_triangle * cube_triangles = NULL;
 
 Vec2f project(const Vec3f p){
 	Vec2f ans = {.x = (p.x * FOV_FACTOR) / p.z, .y = (p.y * FOV_FACTOR) / p.z };
 	return ans;
-}
+};
 
 static void R_input(){
 	SDL_Event e;
@@ -52,12 +52,11 @@ static void R_update(){
 	cube_triangles = NULL;
 
 	Vec3f transformed_vertices[3];
-	//memset(cube_triangles, 0, sizeof(Triangle) * CUBE_NUM_FACES);
 	// 3 projected screen vertices coming out of this process for each face
 	for(int i = 0; i < darray_length(cube->faces); i++){
 
 		const Face * face = &cube->faces[i];
-		Triangle face_triangle;
+		Proj_triangle face_triangle;
 		memset(transformed_vertices, 0, sizeof(Vec3f) * 3);
 		// transforme and project each face vertex.
 		for(int j = 0; j < 3; j++){
@@ -76,15 +75,20 @@ static void R_update(){
 		Vec3f vec_ab = Vec3f_sub(vec_b, vec_a);
 		Vec3f vec_ac = Vec3f_sub(vec_c, vec_a);
 
-		Vec3f normal = Vec3f_cross(vec_ab, vec_ac);
-		Vec3f camera_dir = Vec3f_sub(camera_position, vec_a);
+		Vec3f normal = Vec3f_normalize(Vec3f_cross(vec_ab, vec_ac));
+		Vec3f camera_dir = Vec3f_normalize(Vec3f_sub(camera_position, vec_a));
 
 		if(Vec3f_dot(normal, camera_dir) < 0){
 			continue;
 		};
 
 		for(int j = 0; j < 3; j++){
-			face_triangle.projected_points[j] = project(transformed_vertices[j]);
+			Vec2f proj_point = project(transformed_vertices[j]);
+
+			proj_point.x += screen_x;
+			proj_point.y += screen_y;
+
+			face_triangle.projected_points[j] = proj_point;
 		}
 
 		darray_push(cube_triangles, face_triangle);
@@ -96,16 +100,8 @@ static void R_render(){
 
 	int n = darray_length(cube_triangles);
 	for(int i = 0; i < n; i++){
-		for(int j = 0; j < 3; j++){
-			const Vec2f * v1 = &cube_triangles[i].projected_points[j];
-			const Vec2f * v2 = &cube_triangles[i].projected_points[(j + 1) % 3];
-
-			line(fb, v1->x + screen_x,
-					 v1->y + screen_y,
-					 v2->x + screen_x,
-					 v2->y + screen_y,
-					 0xff00ffff);
-		}
+		projected_triangle_draw_filled(fb, &cube_triangles[i]);
+		projected_triangle_draw_wireframe(fb, &cube_triangles[i]);
 	}
 
 	darray_free(cube_triangles);
@@ -139,8 +135,7 @@ void R_run(int window_w, int window_h){
 		R_render();
 	};
 
-	darray_free(cube->vertices);
-	darray_free(cube->faces);
+	Model_destroy(cube);
 	D_Quit();
 	Fbuffer_destroy(fb);
 };

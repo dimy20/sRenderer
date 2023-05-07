@@ -43,4 +43,3 @@ Model * Obj_load(const char * filename){
 	fclose(f);
 	return model;
 };
-

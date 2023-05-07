@@ -11,4 +11,4 @@ typedef struct{
 	Vec3f rotation;
 }Model;
 
-extern Model model;
+void Model_destroy(Model * model);

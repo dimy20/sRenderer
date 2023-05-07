@@ -51,6 +51,13 @@ inline double Vec3f_dot(Vec3f a, Vec3f b){
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
+inline Vec3f Vec3f_normalize(Vec3f v){
+	double len = Vec3f_len(v);
+	return (Vec3f){.x = v.x / len,
+		           .y = v.y / len,
+				   .z = v.z / len };
+}
+
 // vec2 operations
 
 inline double Vec2f_len(Vec2f v){
@@ -71,4 +78,12 @@ inline Vec2f Vec2f_mul(Vec2f a, double t){
 
 inline double Vec2f_dot(Vec2f a, Vec2f b){
 	return a.x*b.x + a.y*b.y;
+}
+
+inline Vec2f Vec2f_normalize(Vec2f v){
+	double len = Vec2f_len(v);
+	return (Vec2f){
+		.x = v.x / len,
+		.y = v.y / len
+	};
 }
