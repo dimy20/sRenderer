@@ -5,10 +5,12 @@
 #include "vec.h"
 
 typedef struct{
-	Vec3f * vertices;
+	Vec3 * vertices;
 	Face * faces;
 	// transform
-	Vec3f rotation;
+	Vec3 rotation;
+	Vec3 scale;
+	Vec3 translation;
 }Model;
 
 void Model_destroy(Model * model);

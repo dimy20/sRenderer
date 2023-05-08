@@ -17,7 +17,7 @@ typedef struct{
 // The resulted projected face or "Proj_triangle" is stored in this struct.
 // Which can be used later for rendering as a solid filled triangle or wireframe
 typedef struct{
-	Vec2f projected_points[3];
+	Vec2 projected_points[3];
 	uint32_t color;
 	double avg_z;
 }Proj_triangle;

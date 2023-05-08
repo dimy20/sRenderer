@@ -14,15 +14,21 @@ Model * Obj_load(const char * filename){
 		return NULL;
 	}
 
+	//TODO: have a model_init function
 	Model * model = RMALLOC(sizeof(Model));
-	memset(model, 0, sizeof(Model));
+	model->vertices = NULL;
+	model->faces = NULL;
+	model->scale = (Vec3){1, 1, 1};
+	model->rotation = (Vec3){0, 0, 0};
+	model->translation = (Vec3){0, 0, 0};
+
 
 	char line[512];
 	memset(line, 0, 512);
 
 	while(fgets(line, 512, f)){
 		if(strncmp(line, "v ", 2) == 0){
-			Vec3f vertex;
+			Vec3 vertex;
 			sscanf(line, "v %lf %lf %lf", &vertex.x, &vertex.y, &vertex.z);
 
 			darray_push(model->vertices, vertex);

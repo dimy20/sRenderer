@@ -45,6 +45,7 @@ int darray_length(void * arr){
 }
 
 void darray_free(void * arr){
-	free(HEADER_OFFSET(arr));
+	if(arr != NULL){
+		free(HEADER_OFFSET(arr));
+	}
 };
-
