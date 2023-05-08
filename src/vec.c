@@ -89,7 +89,7 @@ inline Vec2 Vec2_normalize(Vec2 v){
 }
 
 Vec4 Vec4_from_vec3(Vec3 vec){
-	return (Vec4) {.x = vec.x, .y = vec.y, .z = vec.z, 1};
+	return (Vec4) {.x = vec.x, .y = vec.y, .z = vec.z, 1.0};
 }
 
 Vec3 Vec3_from_vec4(Vec4 vec){

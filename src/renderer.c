@@ -13,6 +13,8 @@
 #include "mat.h"
 
 /* Constants */
+#define M_PI 3.14159265358979323846
+#define TO_RAD(d) ((d) * M_PI) / 180.0
 #define WINDOW_W 800
 #define WINDOW_H 600
 #define TARGET_FPS 60
@@ -36,8 +38,9 @@ Proj_triangle * cube_triangles = NULL;
 
 // transformations
 Mat4 scale_mat, translate_mat, rotate_y_mat, rotate_x_mat, rotate_z_mat;
+Mat4 perspective_proj_mat;
 
-Vec2 project(const Vec3 p){
+Vec2 weak_project(const Vec3 p){
 	Vec2 ans = {.x = (p.x * FOV_FACTOR) / p.z, .y = (p.y * FOV_FACTOR) / p.z };
 	return ans;
 };
@@ -62,7 +65,7 @@ static inline void R_apply_transformations(const Face * face, Vec3 * transformed
 		Mat4 world_matrix = Mat4_id();
 		//world_matrix = Mat4_mult_mat4(scale_mat, world_matrix);
 		world_matrix = Mat4_mult_mat4(rotate_y_mat, world_matrix);
-		world_matrix = Mat4_mult_mat4(rotate_x_mat, world_matrix);
+		//world_matrix = Mat4_mult_mat4(rotate_x_mat, world_matrix);
 		world_matrix = Mat4_mult_mat4(rotate_z_mat, world_matrix);
 		world_matrix = Mat4_mult_mat4(translate_mat, world_matrix);
 
@@ -90,10 +93,15 @@ static inline void R_apply_projection(const Vec3 * transformed_vertices,
 		Proj_triangle * projected_triangle){
 
 	for(int j = 0; j < 3; j++){
-		Vec2 proj_point = project(transformed_vertices[j]);
+		Vec4 proj_point = Mat4_mult_vec4_project(perspective_proj_mat, Vec4_from_vec3(transformed_vertices[j]));
+
+		proj_point.x *= screen_x;
+		proj_point.y *= screen_y;
+
 		proj_point.x += screen_x;
 		proj_point.y += screen_y;
-		projected_triangle->projected_points[j] = proj_point;
+
+		projected_triangle->projected_points[j] = (Vec2){.x = proj_point.x, .y = proj_point.y};
 	}
 };
 
@@ -104,7 +112,8 @@ static void R_update(){
 	cube->scale.x += 0.002;
 	cube->scale.y += 0.001;
 
-	cube->translation.x += 0.001;
+	cube->translation.x = 0;
+	cube->translation.y = 0;
 	cube->translation.z = 5.0;
 
 	scale_mat = Mat4_scale(cube->scale.x, cube->scale.y, cube->scale.z);
@@ -181,6 +190,9 @@ void R_run(int window_w, int window_h){
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
 	cube = Obj_load("assets/cube.obj");
+
+	double aspect_ratio = (double)window_h / (double)window_w;
+	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);
 
 	while(running){
 		R_input();

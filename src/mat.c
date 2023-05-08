@@ -88,3 +88,30 @@ Mat4 Mat4_mult_mat4(Mat4 a, Mat4 b){
 	}
 	return result;
 };
+
+Mat4 Mat4_make_perspective(double fov, double aspect_ratio, double znear, double zfar){
+	Mat4 result = {{{0}}};
+
+	result.m[0][0] = aspect_ratio * (1.0 / tan(fov / 2.0));
+	result.m[1][1] = 1 / tan(fov / 2.0);
+	result.m[2][2] = zfar / (zfar - znear);
+	result.m[2][3] = (-zfar * znear) / (zfar - znear);
+	result.m[3][2] = 1.0; // keep z
+
+	return result;
+};
+
+Vec4 Mat4_mult_vec4_project(Mat4 perspective_proj_mat, Vec4 world_vertex){
+	Vec4 projected_vertex = Mat4_mult_vec4(perspective_proj_mat, world_vertex);
+
+	/* Perform perspective division:
+	   original Z depth, World z value of v is kept in W component of 
+	   projected_v, we can use this value to perform perspective division. */
+	if(projected_vertex.w != 0.0){
+		projected_vertex.x /= projected_vertex.w;
+		projected_vertex.y /= projected_vertex.w;
+		projected_vertex.z /= projected_vertex.w;
+	};
+
+	return projected_vertex;
+};
