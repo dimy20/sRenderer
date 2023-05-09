@@ -11,6 +11,7 @@
 #include "darray.h"
 #include "obj.h"
 #include "mat.h"
+#include "light.h"
 
 /* Constants */
 #define M_PI 3.14159265358979323846
@@ -64,7 +65,7 @@ static inline void R_apply_transformations(const Face * face, Vec3 * transformed
 
 		Mat4 world_matrix = Mat4_id();
 		//world_matrix = Mat4_mult_mat4(scale_mat, world_matrix);
-		world_matrix = Mat4_mult_mat4(rotate_y_mat, world_matrix);
+		//world_matrix = Mat4_mult_mat4(rotate_y_mat, world_matrix);
 		//world_matrix = Mat4_mult_mat4(rotate_x_mat, world_matrix);
 		world_matrix = Mat4_mult_mat4(rotate_z_mat, world_matrix);
 		world_matrix = Mat4_mult_mat4(translate_mat, world_matrix);
@@ -74,7 +75,7 @@ static inline void R_apply_transformations(const Face * face, Vec3 * transformed
 	};
 }
 // performs backface culling on trnasformed face vertices
-static inline bool R_backface_cull_test(const Vec3 * transformed_vertices){
+static inline bool R_backface_cull_test(const Vec3 * transformed_vertices, Vec3 * normal){
 	 //backface culling test
 	Vec3 vec_a = transformed_vertices[0];
 	Vec3 vec_b = transformed_vertices[1];
@@ -83,10 +84,10 @@ static inline bool R_backface_cull_test(const Vec3 * transformed_vertices){
 	Vec3 vec_ab = Vec3_sub(vec_b, vec_a);
 	Vec3 vec_ac = Vec3_sub(vec_c, vec_a);
 
-	Vec3 normal = Vec3_normalize(Vec3_cross(vec_ab, vec_ac));
+	*normal = Vec3_normalize(Vec3_cross(vec_ab, vec_ac));
 	Vec3 camera_dir = Vec3_normalize(Vec3_sub(camera_position, vec_a));
 
-	return Vec3_dot(normal, camera_dir) > 0;
+	return Vec3_dot(*normal, camera_dir) > 0;
 };
 
 static inline void R_apply_projection(const Vec3 * transformed_vertices,
@@ -101,9 +102,24 @@ static inline void R_apply_projection(const Vec3 * transformed_vertices,
 		proj_point.x += screen_x;
 		proj_point.y += screen_y;
 
-		projected_triangle->projected_points[j] = (Vec2){.x = proj_point.x, .y = proj_point.y};
+		projected_triangle->projected_points[j] = (Vec2){.x = proj_point.x, .y = proj_point.y };
 	}
 };
+
+static uint32_t light_color_apply_intensity(uint32_t light_color, float intensity){
+
+	if(intensity > 1) intensity = 1.0;
+	if(intensity < 0) intensity = 0;
+
+	uint8_t r, g, b, shaded_r, shaded_g, shaded_b;
+	unpack_color(light_color, &r, &g, &b);
+
+	shaded_r = (uint8_t)(intensity * r);
+	shaded_g = (uint8_t)(intensity * g);
+	shaded_b = (uint8_t)(intensity * b);
+
+	return pack_color(shaded_r, shaded_g, shaded_b);
+}
 
 static void R_update(){
 	cube->rotation.x += 0.01;
@@ -128,10 +144,7 @@ static void R_update(){
 
 	// 3 projected screen vertices coming out of this process for each face
 	for(int i = 0; i < darray_length(cube->faces); i++){
-		//printf("Updating\n");
-		// init projected_triangle
 		Proj_triangle projected_triangle;
-		projected_triangle.color = cube->faces[i].color;
 		projected_triangle.avg_z = 0;
 
 		Vec3 transformed_vertices[3];
@@ -143,9 +156,14 @@ static void R_update(){
 		}
 		projected_triangle.avg_z /= 3;
 
-		if(!R_backface_cull_test(transformed_vertices)){
+		Vec3 normal;
+		if(!R_backface_cull_test(transformed_vertices, &normal)){
 			continue;
 		}
+
+		float light_i = Vec3_dot(light.direction, normal) * -1.0;
+		projected_triangle.color = light_color_apply_intensity(light.color, light_i);
+
 		// project face into a screen triangle
 		R_apply_projection(transformed_vertices, &projected_triangle);
 		darray_push(cube_triangles, projected_triangle);
@@ -160,12 +178,12 @@ static void R_render(){
 
 	int n = darray_length(cube_triangles);
 	for(int i = 0; i < n; i++){
-		//projected_triangle_draw_filled(fb, &cube_triangles[i]);
-		projected_triangle_draw_wireframe(fb, &cube_triangles[i]);
-		for(int j = 0; j < 3; j++){
-			Vec2 * p = &cube_triangles[i].projected_points[j];
-			draw_rect(fb, p->x, p->y, 3, 3, 0xfffffff);
-		}
+		projected_triangle_draw_filled(fb, &cube_triangles[i]);
+		//projected_triangle_draw_wireframe(fb, &cube_triangles[i]);
+		//for(int j = 0; j < 3; j++){
+		//	Vec2 * p = &cube_triangles[i].projected_points[j];
+		//	draw_rect(fb, p->x, p->y, 3, 3, 0xfffffff);
+		//}
 	}
 	darray_free(cube_triangles);
 	D_present_pixels(fb->pixels);
@@ -189,7 +207,7 @@ void R_run(int window_w, int window_h){
 	fb = Fbuffer_create(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
-	cube = Obj_load("assets/cube.obj");
+	cube = Obj_load("assets/f22.obj");
 
 	double aspect_ratio = (double)window_h / (double)window_w;
 	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);

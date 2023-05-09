@@ -17,8 +17,8 @@ inline Vec3 Vec3_rotate_x(const Vec3 v, double angle){
 };
 
 inline Vec3 Vec3_rotate_y(const Vec3 v, double angle){
-	double rotated_x = v.x * cos(angle) - v.z * sin(angle);
-	double rotated_z = v.x * sin(angle) + v.z * cos(angle);
+	double rotated_x = v.x * cos(angle) + v.z * sin(angle);
+	double rotated_z = v.x * -sin(angle) + v.z * cos(angle);
 	Vec3 rotated = {.x = rotated_x, .y = v.y, .z = rotated_z};
 	return rotated;
 }
