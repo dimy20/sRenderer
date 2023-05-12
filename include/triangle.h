@@ -2,6 +2,7 @@
 
 #include "vec.h"
 #include "fbuffer.h"
+#include "texture.h"
 
 typedef struct{
 	union{
@@ -10,6 +11,10 @@ typedef struct{
 		};
 		int indices[3];
 	};
+
+	Tex2_coord a_uv;
+	Tex2_coord b_uv;
+	Tex2_coord c_uv;
 	uint32_t color;
 }Face;
 
@@ -20,10 +25,9 @@ typedef struct{
 	Vec2 projected_points[3];
 	uint32_t color;
 	double avg_z;
+	const Face * face; // keep a pointer to the original face in object space
 }Proj_triangle;
 
 void projected_triangle_draw_filled(Fbuffer * fb, const Proj_triangle * t);
 void projected_triangle_draw_wireframe(Fbuffer * fb, const Proj_triangle * t);
 int compare_proj_triangle(const void * _a, const void * _b);
-
-
