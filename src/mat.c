@@ -2,13 +2,10 @@
 #include <math.h>
 
 inline Mat4 Mat4_id(void){
-	Mat4 id;
-	for(int i =0; i < 4; i++){
-		for(int j = 0; j < 4; j++){
-			id.m[i][j] = j == i ? 1 : 0;
-		}
-	}
-	return id;
+	return (Mat4){{{1, 0, 0, 0},
+				   {0, 1, 0, 0},
+				   {0, 0, 1, 0},
+				   {0, 0, 0, 1}}};
 };
 
 inline Mat4 Mat4_scale(double sx, double sy, double sz){
@@ -19,11 +16,11 @@ inline Mat4 Mat4_scale(double sx, double sy, double sz){
 	return mat;
 };
 
-inline Vec4 Mat4_mult_vec4(Mat4 mat, Vec4 vec){
+inline Vec4 Mat4_mult_vec4(const Mat4 * mat, const Vec4 * vec){
 	Vec4 result = {.x = 0, .y = 0, .z = 0, .w =  0};
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 4; j++){
-			result.values[i] += mat.m[i][j] * vec.values[j];
+			result.values[i] += mat->m[i][j] * vec->values[j];
 		}
 	}
 	return result;
@@ -76,13 +73,13 @@ inline Mat4 Mat4_make_rotate_y(double angle){
 	return result;
 };
 
-Mat4 Mat4_mult_mat4(Mat4 a, Mat4 b){
+Mat4 Mat4_mult_mat4(const Mat4 * a, const Mat4 * b){
 	Mat4 result;
 	for(int i = 0; i < 4; i++){
 		for(int j = 0; j < 4; j++){
 			result.m[i][j] = 0;
 			for(int k = 0; k < 4; k++){
-				result.m[i][j] += a.m[i][k] * b.m[k][j];
+				result.m[i][j] += a->m[i][k] * b->m[k][j];
 			}
 		}
 	}
@@ -101,7 +98,7 @@ Mat4 Mat4_make_perspective(double fov, double aspect_ratio, double znear, double
 	return result;
 };
 
-Vec4 Mat4_mult_vec4_project(Mat4 perspective_proj_mat, Vec4 world_vertex){
+Vec4 Mat4_mult_vec4_project(const Mat4 * perspective_proj_mat, const Vec4 * world_vertex){
 	Vec4 projected_vertex = Mat4_mult_vec4(perspective_proj_mat, world_vertex);
 
 	/* Perform perspective division:

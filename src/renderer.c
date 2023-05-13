@@ -1,8 +1,10 @@
 #include <stdbool.h>
 #include <string.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <assert.h>
 
+#include "error.h"
 #include "renderer.h"
 #include "display.h"
 #include "fbuffer.h"
@@ -13,6 +15,9 @@
 #include "mat.h"
 #include "light.h"
 
+
+SDL_Surface * wall_texture;
+Model * load_cube_test();
 /* Constants */
 #define M_PI 3.14159265358979323846
 #define TO_RAD(d) ((d) * M_PI) / 180.0
@@ -56,21 +61,13 @@ static void R_input(){
 };
 
 // applies transformations to a face vertices, and returns an array of 3 transformed vertices
-static inline void R_apply_transformations(const Face * face, Vec3 * transformed_vertices){
+static inline void R_apply_transformations(const Face * face, Vec3 * transformed_vertices, const Mat4 * world_matrix){
 	memset(transformed_vertices, 0, sizeof(Vec3) * 3);
 
 	Vec4 augmented_vertices[3];
 	for(int j = 0; j < 3; j++){
 		augmented_vertices[j] = Vec4_from_vec3(cube->vertices[face->indices[j] - 1]);
-
-		Mat4 world_matrix = Mat4_id();
-		//world_matrix = Mat4_mult_mat4(scale_mat, world_matrix);
-		//world_matrix = Mat4_mult_mat4(rotate_y_mat, world_matrix);
-		//world_matrix = Mat4_mult_mat4(rotate_x_mat, world_matrix);
-		world_matrix = Mat4_mult_mat4(rotate_z_mat, world_matrix);
-		world_matrix = Mat4_mult_mat4(translate_mat, world_matrix);
-
-		augmented_vertices[j] = Mat4_mult_vec4(world_matrix, augmented_vertices[j]);
+		augmented_vertices[j] = Mat4_mult_vec4(world_matrix, &augmented_vertices[j]);
 		transformed_vertices[j] = Vec3_from_vec4(augmented_vertices[j]);
 	};
 }
@@ -94,7 +91,8 @@ static inline void R_apply_projection(const Vec3 * transformed_vertices,
 		Proj_triangle * projected_triangle){
 
 	for(int j = 0; j < 3; j++){
-		Vec4 proj_point = Mat4_mult_vec4_project(perspective_proj_mat, Vec4_from_vec3(transformed_vertices[j]));
+		Vec4 augmented = Vec4_from_vec3(transformed_vertices[j]);
+		Vec4 proj_point = Mat4_mult_vec4_project(&perspective_proj_mat, &augmented);
 
 		proj_point.x *= screen_x;
 		proj_point.y *= screen_y;
@@ -139,6 +137,12 @@ static void R_update(){
 	rotate_x_mat = Mat4_make_rotate_x(cube->rotation.x);
 	rotate_z_mat = Mat4_make_rotate_z(cube->rotation.z);
 
+	// make world matrix
+	Mat4 world_matrix = Mat4_id();
+	world_matrix = Mat4_mult_mat4(&rotate_z_mat, &world_matrix);
+	world_matrix = Mat4_mult_mat4(&rotate_y_mat, &world_matrix);
+	world_matrix = Mat4_mult_mat4(&translate_mat, &world_matrix);
+
 	cube_triangles = NULL;
 	assert(darray_length(cube->faces) != 0);
 
@@ -148,7 +152,7 @@ static void R_update(){
 		projected_triangle.avg_z = 0;
 
 		Vec3 transformed_vertices[3];
-		R_apply_transformations(&cube->faces[i], transformed_vertices);
+		R_apply_transformations(&cube->faces[i], transformed_vertices, &world_matrix);
 
 		// compute avg depth
 		for(int j = 0; j < 3; j++){
@@ -163,6 +167,7 @@ static void R_update(){
 
 		float light_i = Vec3_dot(light.direction, normal) * -1.0;
 		projected_triangle.color = light_color_apply_intensity(light.color, light_i);
+		projected_triangle.face = &cube->faces[i];
 
 		// project face into a screen triangle
 		R_apply_projection(transformed_vertices, &projected_triangle);
@@ -175,15 +180,18 @@ static void R_update(){
 
 static void R_render(){
 	Fbuffer_clear(fb, 0);
-
 	int n = darray_length(cube_triangles);
 	for(int i = 0; i < n; i++){
-		projected_triangle_draw_filled(fb, &cube_triangles[i]);
-		//projected_triangle_draw_wireframe(fb, &cube_triangles[i]);
-		//for(int j = 0; j < 3; j++){
-		//	Vec2 * p = &cube_triangles[i].projected_points[j];
-		//	draw_rect(fb, p->x, p->y, 3, 3, 0xfffffff);
-		//}
+		Proj_triangle * t = &cube_triangles[i];
+
+		//draw_triangle(fb, t->projected_points, t->color);
+		//draw_wireframe_triangle(fb, t->projected_points, 0x00ff00ff);
+
+		uint32_t * pixels = (uint32_t *)wall_texture->pixels;
+		Tex2_coord uv_coords[3] = {t->face->a_uv, t->face->b_uv, t->face->c_uv};
+		draw_triangle_tex2mapped(fb, t->projected_points, uv_coords, pixels);
+
+
 	}
 	darray_free(cube_triangles);
 	D_present_pixels(fb->pixels);
@@ -204,10 +212,13 @@ void R_cap_fps(){
 
 void R_run(int window_w, int window_h){
 	D_Init(window_w, window_h);
+	DIE(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) < 0, IMG_GetError());
 	fb = Fbuffer_create(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
-	cube = Obj_load("assets/f22.obj");
+	cube = load_cube_test();
+	wall_texture = load_texture("assets/wall.png");
+	//cube = Obj_load(cube, "assets/f22.obj");
 
 	double aspect_ratio = (double)window_h / (double)window_w;
 	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);
@@ -222,4 +233,5 @@ void R_run(int window_w, int window_h){
 	Model_destroy(cube);
 	D_Quit();
 	Fbuffer_destroy(fb);
+	IMG_Quit();
 };
