@@ -1,26 +1,23 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <memory>
 
 #include "vec.h"
 #include "model.h"
-#include "memory.h"
-#include "darray.h"
 
-Model * Obj_load(const char * filename){
+std::unique_ptr<Model> load_obj(const char * filename){
 	FILE * f = fopen(filename, "r");
 	if(!f){
 		fprintf(stderr, "Error: failed to open file %s\n", filename);
 		return NULL;
 	}
 
+	std::unique_ptr<Model> model = std::make_unique<Model>();
 	//TODO: have a model_init function
-	Model * model = RMALLOC(sizeof(Model));
-	model->vertices = NULL;
-	model->faces = NULL;
-	model->scale = (Vec3){1, 1, 1};
-	model->rotation = (Vec3){0, 0, 0};
-	model->translation = (Vec3){0, 0, 0};
+	model->scale = Vec3(1, 1, 1);
+	model->rotation = Vec3(0, 0, 0);
+	model->translation = Vec3(0, 0, 0);
 
 
 	char line[512];
@@ -31,7 +28,7 @@ Model * Obj_load(const char * filename){
 			Vec3 vertex;
 			sscanf(line, "v %lf %lf %lf", &vertex.x, &vertex.y, &vertex.z);
 
-			darray_push(model->vertices, vertex);
+			model->vertices.push_back(vertex);
 		};
 		if(strncmp(line, "f ", 2) == 0){
 			Face face;
@@ -44,7 +41,7 @@ Model * Obj_load(const char * filename){
 
 			face.color = 0xffffffff;
 
-			darray_push(model->faces, face);
+			model->faces.push_back(face);
 		}
 	}
 

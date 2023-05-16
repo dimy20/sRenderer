@@ -1,6 +1,7 @@
 #include <stdio.h>
-#include "texture.h"
 #include <SDL2/SDL_image.h>
+
+#include "texture.h"
 #include "error.h"
 
 SDL_Surface * load_texture(const char * filename){

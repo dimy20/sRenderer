@@ -1,16 +1,15 @@
 #pragma once
 
-#include "darray.h"
+#include <vector>
 #include "triangle.h"
 #include "vec.h"
 
-typedef struct{
-	Vec3 * vertices;
-	Face * faces;
+struct Model{
+	Model() {};
+	std::vector<Vec3> vertices;
+	std::vector<Face> faces;
 	// transform
 	Vec3 rotation;
 	Vec3 scale;
 	Vec3 translation;
-}Model;
-
-void Model_destroy(Model * model);
+};

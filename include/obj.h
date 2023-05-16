@@ -1,4 +1,5 @@
 #pragma once
 
+#include <memory>
 #include "model.h"
-Model * Obj_load(const char * filename);
+std::unique_ptr<Model> load_obj(const char * filename);

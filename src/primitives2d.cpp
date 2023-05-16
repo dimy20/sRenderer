@@ -20,11 +20,7 @@ Vec3 color_b = {.x = 0, .y = 1.0, .z = 0};
 Vec3 color_c = {.x = 0, .y = 0, .z = 1.0};
 
 uint32_t interpolate_colors(double alpha, double beta, double gamma){
-	Vec3 i_a = Vec3_mul(color_a, alpha);
-	Vec3 i_b = Vec3_mul(color_b, beta);
-	Vec3 i_c = Vec3_mul(color_c, gamma);
-
-	Vec3 _color = Vec3_add(Vec3_add(i_a, i_b), i_c);
+	Vec3 _color = color_a * alpha + color_b * beta + color_c * gamma;
 
 	uint8_t r = (uint8_t)(_color.x * 0xff);
 	uint8_t g = (uint8_t)(_color.y * 0xff);
@@ -97,18 +93,19 @@ void draw_rect(Fbuffer * fb, int x1, int y1, int w, int h, uint32_t color){
 	}
 };
 
-static inline double edge(const Vec2 * a, const Vec2 * b, const Vec2 * c){
+static inline double edge(const Vec2f& a, const Vec2f& b, const Vec2f& c){
 	// instead of computing the determinant of ab,ac im doing det of ac,ab
 	// because i want my function return positive when c is to the right of segment ab.
 	// since im using a left handed system im going to be checkig points and edges in a clock-wise
 	// order, and i prefer to test for >= 0 instead of <= 0.
-	Vec2 ab = Vec2_sub(*b, *a);
-	Vec2 ac = Vec2_sub(*c, *a);
-
+	//Vec2 ab = Vec2_sub(*b, *a);
+	//Vec2 ac = Vec2_sub(*c, *a);
+	Vec2f ab = b - a;
+	Vec2f ac = c - a;
 	return ac.x * ab.y - ab.x * ac.y;
 };
 
-static inline void min_bounding_box(const Vec2 * points, int max_w, int max_h, int * min_x, int * max_x, int * min_y, int * max_y){
+static inline void min_bounding_box(const Vec2f * points, int max_w, int max_h, int * min_x, int * max_x, int * min_y, int * max_y){
 	*min_x = max_w - 1;
 	*max_x = 0;
 
@@ -124,14 +121,14 @@ static inline void min_bounding_box(const Vec2 * points, int max_w, int max_h, i
 	}
 };
 
-void draw_triangle_tex2mapped(Fbuffer * fb, const Vec2 * points, const Tex2_coord * uv_coords, const uint32_t * texture_pixels){
+void draw_triangle_tex2mapped(Fbuffer * fb, const Vec2f * points, const Tex2_coord * uv_coords, const uint32_t * texture_pixels){
 	int min_x, max_x, min_y, max_y;
 	min_bounding_box(points, fb->w, fb->h, &min_x, &max_x, &min_y, &max_y);
 
-	const Vec2 * a = &points[0];
-	const Vec2 * b = &points[1];
-	const Vec2 * c = &points[2];
-	Vec2 p;
+	const Vec2f& a = points[0];
+	const Vec2f& b = points[1];
+	const Vec2f& c = points[2];
+	Vec2f p;
 
 	// this is actually 2 times the area;
 	double p_area = edge(c, a, b);
@@ -153,9 +150,9 @@ void draw_triangle_tex2mapped(Fbuffer * fb, const Vec2 * points, const Tex2_coor
 			 *   /  p
 			 *  A     <- C
 			 * */
-			double w0 = edge(b, c, &p);
-			double w1 = edge(c, a, &p);
-			double w2 = edge(a, b, &p);
+			double w0 = edge(b, c, p);
+			double w1 = edge(c, a, p);
+			double w2 = edge(a, b, p);
 
 			if(w0 >= 0 && w1 >= 0 && w2 >= 0){ // 
 				double alpha = w0 / p_area;
@@ -178,11 +175,11 @@ void draw_triangle_tex2mapped(Fbuffer * fb, const Vec2 * points, const Tex2_coor
 /* draws triangle with a flat color, uses same algorithm as above,
    except there is no need to calculate barycentric coordinates 
    */
-void draw_triangle(Fbuffer * fb, const Vec2 * points, uint32_t color){
+void draw_triangle(Fbuffer * fb, const Vec2f * points, uint32_t color){
 	int min_x, max_x, min_y, max_y;
 	min_bounding_box(points, fb->w, fb->h, &min_x, &max_x, &min_y, &max_y);
 
-	Vec2 p;
+	Vec2f p;
 	// A B C
 	// 0 1 2
 	for(int y = min_y; y <= max_y; y++){
@@ -190,9 +187,9 @@ void draw_triangle(Fbuffer * fb, const Vec2 * points, uint32_t color){
 			p.x = x;
 			p.y = y;
 
-			double w0 = edge(points + 1, points + 2, &p);
-			double w1 = edge(points + 2, points, &p);
-			double w2 = edge(points, points + 1, &p);
+			double w0 = edge(points[1], points[2], p);
+			double w1 = edge(points[2], points[0], p);
+			double w2 = edge(points[0], points[1], p);
 
 			if(w0 >= 0 && w1 >= 0 && w2 >= 0){ // 
 				Fbuffer_set_pixel(fb, x, y, color);
@@ -202,7 +199,7 @@ void draw_triangle(Fbuffer * fb, const Vec2 * points, uint32_t color){
 
 };
 
-void draw_wireframe_triangle(Fbuffer * fb, const Vec2 * points,  uint32_t color){
+void draw_wireframe_triangle(Fbuffer * fb, const Vec2f * points,  uint32_t color){
 	for(int i = 0; i < 3; i++){
 		draw_line(fb, points[i].x, points[i].y,
 				      points[(i + 1) % 3].x, points[(i + 1) % 3].y, color);
