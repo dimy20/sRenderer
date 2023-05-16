@@ -6,14 +6,6 @@
 
 struct Face{
 	Face() {};
-	/*
-	Face(std::initializer_list<int> _indices,  Tex2_coord _a_uv, Tex2_coord _b_uv, Tex2_coord _c_uv){
-		std::copy(_indices.begin(), _indices.end(), indices);
-		uv_coords = _a_uv;
-		uv_coords = _b_uv;
-		uv_coords = _c_uv;
-	};
-	*/
 	union{
 		struct{
 			int a, b, c;
@@ -31,7 +23,6 @@ struct Face{
 struct Proj_triangle{
 	Vec4 projected_points[3];
 	uint32_t color;
-	double avg_z;
 	const Face * face; // keep a pointer to the original face in object space
 };
 

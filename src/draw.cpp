@@ -12,6 +12,8 @@ Vec3 color_a = {.x = 1.0, .y = 0, .z = 0};
 Vec3 color_b = {.x = 0, .y = 1.0, .z = 0};
 Vec3 color_c = {.x = 0, .y = 0, .z = 1.0};
 
+extern std::vector<double> zbuffer;
+
 uint32_t interpolate_colors(double alpha, double beta, double gamma){
 	Vec3 _color = color_a * alpha + color_b * beta + color_c * gamma;
 
@@ -163,21 +165,37 @@ void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Te
 				barycentric_weights.beta = w1 / p_area;
 				barycentric_weights.gamma = 1.0 - barycentric_weights.alpha - barycentric_weights.beta;
 
-				// perspective correct interpolation.
-				double interpolated_u = dot(u_over_w, barycentric_weights);
-				double interpolated_v = dot(v_over_w, barycentric_weights);
+				// needed to interpolate z values for pixel x,y:
+				// Z values are not linear across the triangle, so we cant linearly interpolate z's,
+				// However 1/z is linear, so we can interpolate those and reverse back to z.
 				double interpolated_inv_w = dot(inv_ws, barycentric_weights);
+				/*
+				 * Remember: Z values from camera space are stored in the w component after perspective projection.
+				 * The closer w is to the camera, the smaller it will be.
+				 * However we interpolate 1/w, so the inverse will happen, the closer W is the bigger 1/w will be.
+				 * by doing 1 - 1/w, we flip that back to [closer -> 0, far-> 1.0] instead of (closer -> 1.0, far -> 0)
+				 * If the current pixel at (x, y) has an interpolated z depth smaller the the z depth of the previous pixel at
+				 * the same (x, y), then it is closer, so replace the color.
+				 * */
+				if(1.0 - interpolated_inv_w < zbuffer[y * fb.w + x]){ // depth testing
+					// perspective correct interpolation.
+					double interpolated_u = dot(u_over_w, barycentric_weights);
+					double interpolated_v = dot(v_over_w, barycentric_weights);
 
-				interpolated_u /= interpolated_inv_w;
-				interpolated_v /= interpolated_inv_w;
+					interpolated_u /= interpolated_inv_w;
+					interpolated_v /= interpolated_inv_w;
 
-				// scale interpolated u and v by texture dimension to get
-				// coordinate in texture space.
-				int texture_x = static_cast<int>(fabs(interpolated_u) * texture->w) % texture->w;
-				int texture_y = static_cast<int>(fabs(interpolated_v) * texture->h) % texture->h;
+					// scale interpolated u and v by texture dimension to get
+					// coordinate in texture space.
+					int texture_x = static_cast<int>(fabs(interpolated_u) * texture->w);
+					int texture_y = static_cast<int>(fabs(interpolated_v) * texture->h);
 
-				uint32_t color = texture_pixels[(texture->h - texture_y - 1) * texture->w + texture_x];
-				fb.set_pixel(x, y, color);
+					uint32_t color = texture_pixels[(texture->h - texture_y - 1) * texture->w + texture_x];
+					fb.set_pixel(x, y, color);
+
+					zbuffer[y * fb.w + x] = 1.0 - interpolated_inv_w;
+				}
+
 			}
 		}
 	}
@@ -187,9 +205,11 @@ void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Te
 /* draws triangle with a flat color, uses same algorithm as above,
    except there is no need to calculate barycentric coordinates 
    */
-void draw_triangle(mate3d::Fbuffer& fb, const Vec2f * points, uint32_t color){
+void draw_triangle(mate3d::Fbuffer& fb, const Vec4 * points, uint32_t color){
 	int min_x, max_x, min_y, max_y;
-	min_bounding_box(points, fb.w, fb.h, &min_x, &max_x, &min_y, &max_y);
+
+	Vec2f _points[3] = {points[0].vec2f(), points[1].vec2f(), points[2].vec2f() };
+	min_bounding_box(_points, fb.w, fb.h, &min_x, &max_x, &min_y, &max_y);
 
 	Vec2f p;
 	// A B C
@@ -199,9 +219,9 @@ void draw_triangle(mate3d::Fbuffer& fb, const Vec2f * points, uint32_t color){
 			p.x = x;
 			p.y = y;
 
-			double w0 = edge(points[1], points[2], p);
-			double w1 = edge(points[2], points[0], p);
-			double w2 = edge(points[0], points[1], p);
+			double w0 = edge(points[1].vec2f(), points[2].vec2f(), p);
+			double w1 = edge(points[2].vec2f(), points[0].vec2f(), p);
+			double w2 = edge(points[0].vec2f(), points[1].vec2f(), p);
 
 			if(w0 >= 0 && w1 >= 0 && w2 >= 0){ // 
 				fb.set_pixel(x, y, color);

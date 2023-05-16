@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <algorithm>
 #include <iostream>
+#include <limits>
 
 #include "error.h"
 #include "renderer.h"
@@ -41,6 +42,7 @@ uint64_t prev_time;
 uint32_t renderer_flags;
 std::unique_ptr<mate3d::Fbuffer> fb;
 std::unique_ptr<mate3d::display> display;
+std::vector<double> zbuffer;
 
 // just for testing
 std::unique_ptr<Model> cube = nullptr;
@@ -118,9 +120,9 @@ static uint32_t light_color_apply_intensity(uint32_t light_color, float intensit
 }
 
 static void R_update(){
-	cube->rotation.x += 0.01;
+	//cube->rotation.x += 0.01;
 	cube->rotation.y += 0.01;
-	cube->rotation.z += 0.01;
+	//cube->rotation.z += 0.01;
 	cube->scale.x += 0.002;
 	cube->scale.y += 0.001;
 
@@ -142,16 +144,9 @@ static void R_update(){
 	// 3 projected screen vertices coming out of this process for each face
 	for(size_t i = 0; i < cube->faces.size(); i++){
 		Proj_triangle projected_triangle;
-		projected_triangle.avg_z = 0;
 
 		Vec3 transformed_vertices[3];
 		R_apply_transformations(cube->faces[i], transformed_vertices, world_matrix);
-
-		// compute avg depth
-		for(int j = 0; j < 3; j++){
-			projected_triangle.avg_z += transformed_vertices[j].z;
-		}
-		projected_triangle.avg_z /= 3;
 
 		Vec3 normal;
 		if(!R_backface_cull_test(transformed_vertices, &normal)){
@@ -167,9 +162,6 @@ static void R_update(){
 
 		cube_triangles.push_back(projected_triangle);
 	}
-
-	// painter's
-	std::sort(cube_triangles.begin(), cube_triangles.end(), comp_proj_triangle);
 };
 
 static void R_render(){
@@ -179,7 +171,6 @@ static void R_render(){
 	Tex2_coord uv_coords[3];
 	for(size_t i = 0; i < n; i++){
 		Proj_triangle& t = cube_triangles[i];
-
 		//draw_triangle(*fb, t.projected_points, t.color);
 		//draw_wireframe_triangle(fb, t->projected_points, 0x00ff00ff);
 
@@ -188,7 +179,9 @@ static void R_render(){
 		}
 		draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
 	}
+
 	cube_triangles.clear();
+	std::fill(zbuffer.begin(), zbuffer.end(), 1.0);
 	display->present_pixels(&fb->pixels[0]);
 };
 
@@ -211,8 +204,9 @@ void R_run(int window_w, int window_h){
 	fb = std::make_unique<mate3d::Fbuffer>(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
-	cube = load_obj("assets/cube.obj");
-	wall_texture = load_texture("assets/wall.png");
+	cube = load_obj("assets/crab.obj");
+	wall_texture = load_texture("assets/crab.png");
+	zbuffer.resize(window_w * window_h, 1.0);
 
 	double aspect_ratio = (double)window_h / (double)window_w;
 	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);
