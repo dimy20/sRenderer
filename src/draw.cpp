@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <math.h>
-#include "primitives2d.h"
+#include "draw.h"
 #include "vec.h"
 #include <memory>
 #include "fbuffer.h"
@@ -19,7 +19,7 @@ uint32_t interpolate_colors(double alpha, double beta, double gamma){
 	uint8_t g = (uint8_t)(_color.y * 0xff);
 	uint8_t b = (uint8_t)(_color.z * 0xff);
 
-	return pack_color(r, g, b);
+	return mate3d::pack_color(r, g, b);
 }
 
 void draw_line(mate3d::Fbuffer& fb, int x1, int y1, int x2, int y2, uint32_t color){
@@ -112,7 +112,11 @@ static inline void min_bounding_box(const Vec2f * points, int max_w, int max_h, 
 	}
 };
 
-void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Tex2_coord * uv_coords, const uint32_t * texture_pixels){
+void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Tex2_coord * uv_coords, const SDL_Surface * texture){
+	assert(texture != NULL);
+	assert(points != NULL);
+	assert(uv_coords != NULL);
+
 	int min_x, max_x, min_y, max_y;
 
 	Vec2f _points[3] = {points[0].vec2f(), points[1].vec2f(), points[2].vec2f() };
@@ -126,11 +130,6 @@ void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Te
 	// this is actually 2 times the area;
 	double p_area = edge(c.vec2f(), a.vec2f(), b.vec2f());
 
-	if(uv_coords == NULL || texture_pixels == NULL){
-		//TODO: error
-		return;
-	}
-
 	/* Devide each u and v texture coordinate by it's corresponding w component of the vertex.
 	 * This is to do perspective correct interpolation of u and v coordinates.
 	 * */
@@ -138,6 +137,7 @@ void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Te
 	Vec3 v_over_w(uv_coords[0].v / a.w, uv_coords[1].v / b.w, uv_coords[2].v / c.w);
 	Vec3 inv_ws(1 / a.w, 1 / b.w, 1 / c.w);
 	Weights barycentric_weights;
+	uint32_t * texture_pixels = reinterpret_cast<uint32_t *>(texture->pixels);
 
 	for(int y = min_y; y <= max_y; y++){
 		for(int x = min_x; x <= max_x; x++){
@@ -173,11 +173,10 @@ void draw_triangle_tex2mapped(mate3d::Fbuffer& fb, const Vec4 * points, const Te
 
 				// scale interpolated u and v by texture dimension to get
 				// coordinate in texture space.
-				int texture_x = static_cast<int>(fabs(interpolated_u) * 64);
-				int texture_y = static_cast<int>(fabs(interpolated_v) * 64);
+				int texture_x = static_cast<int>(fabs(interpolated_u) * texture->w) % texture->w;
+				int texture_y = static_cast<int>(fabs(interpolated_v) * texture->h) % texture->h;
 
-				// using hardcoded texture dimension  values for now.
-				uint32_t color = texture_pixels[(64 - texture_y - 1) * 64 + texture_x];
+				uint32_t color = texture_pixels[(texture->h - texture_y - 1) * texture->w + texture_x];
 				fb.set_pixel(x, y, color);
 			}
 		}

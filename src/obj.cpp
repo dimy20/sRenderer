@@ -19,7 +19,6 @@ std::unique_ptr<Model> load_obj(const char * filename){
 	model->rotation = Vec3(0, 0, 0);
 	model->translation = Vec3(0, 0, 0);
 
-
 	char line[512];
 	memset(line, 0, 512);
 
@@ -27,17 +26,17 @@ std::unique_ptr<Model> load_obj(const char * filename){
 		if(strncmp(line, "v ", 2) == 0){
 			Vec3 vertex;
 			sscanf(line, "v %lf %lf %lf", &vertex.x, &vertex.y, &vertex.z);
-
 			model->vertices.push_back(vertex);
-		};
-		if(strncmp(line, "f ", 2) == 0){
+		}else if(std::strncmp(line, "vt ", 3) == 0){
+			Tex2_coord uv;
+			sscanf(line, "vt %lf %lf", &uv.u, &uv.v);
+			model->uv_coords.push_back(uv);
+		}else if(strncmp(line, "f ", 2) == 0){
 			Face face;
-			int texture_indices[3];
-			int normal_indices[3];
 			sscanf(line,"f %d/%d/%d %d/%d/%d %d/%d/%d",
-					&face.indices[0], &texture_indices[0], &normal_indices[0],
-					&face.indices[1], &texture_indices[1], &normal_indices[1],
-					&face.indices[2], &texture_indices[2], &normal_indices[2]);
+					&face.indices[0], &face.uv_indices[0], &face.normal_indices[0],
+					&face.indices[1], &face.uv_indices[1], &face.normal_indices[1],
+					&face.indices[2], &face.uv_indices[2], &face.normal_indices[2]);
 
 			face.color = 0xffffffff;
 

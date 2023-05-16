@@ -5,12 +5,13 @@
 #include <vector>
 #include <assert.h>
 #include <algorithm>
+#include <iostream>
 
 #include "error.h"
 #include "renderer.h"
 #include "display.h"
 #include "fbuffer.h"
-#include "primitives2d.h"
+#include "draw.h"
 #include "vec.h"
 #include "obj.h"
 #include "mat.h"
@@ -20,8 +21,6 @@
 
 
 SDL_Surface * wall_texture;
-std::unique_ptr<Model> load_cube_test();
-//std::unique_ptr<mate3d::>
 /* Constants */
 #define M_PI 3.14159265358979323846
 #define TO_RAD(d) ((d) * M_PI) / 180.0
@@ -176,17 +175,18 @@ static void R_update(){
 static void R_render(){
 	fb->clear(0);
 	size_t n = cube_triangles.size();
-	for(size_t i = 0; i < n; i++){
-		Proj_triangle * t = &cube_triangles[i];
 
-		//draw_triangle(fb, t->projected_points, t->color);
+	Tex2_coord uv_coords[3];
+	for(size_t i = 0; i < n; i++){
+		Proj_triangle& t = cube_triangles[i];
+
+		//draw_triangle(*fb, t.projected_points, t.color);
 		//draw_wireframe_triangle(fb, t->projected_points, 0x00ff00ff);
 
-		uint32_t * pixels = (uint32_t *)wall_texture->pixels;
-		Tex2_coord uv_coords[3] = {t->face->a_uv, t->face->b_uv, t->face->c_uv};
-		draw_triangle_tex2mapped(*fb, t->projected_points, uv_coords, pixels);
-
-
+		for(size_t j = 0; j < 3; j++){
+			uv_coords[j] = cube->uv_coords[t.face->uv_indices[j] - 1];
+		}
+		draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
 	}
 	cube_triangles.clear();
 	display->present_pixels(&fb->pixels[0]);
@@ -211,9 +211,8 @@ void R_run(int window_w, int window_h){
 	fb = std::make_unique<mate3d::Fbuffer>(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
-	cube = load_cube_test();
+	cube = load_obj("assets/cube.obj");
 	wall_texture = load_texture("assets/wall.png");
-	//cube = Obj_load(cube, "assets/f22.obj");
 
 	double aspect_ratio = (double)window_h / (double)window_w;
 	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);

@@ -6,22 +6,22 @@
 
 struct Face{
 	Face() {};
+	/*
 	Face(std::initializer_list<int> _indices,  Tex2_coord _a_uv, Tex2_coord _b_uv, Tex2_coord _c_uv){
 		std::copy(_indices.begin(), _indices.end(), indices);
-		a_uv = _a_uv;
-		b_uv = _b_uv;
-		c_uv = _c_uv;
+		uv_coords = _a_uv;
+		uv_coords = _b_uv;
+		uv_coords = _c_uv;
 	};
+	*/
 	union{
 		struct{
 			int a, b, c;
 		};
 		int indices[3];
 	};
-
-	Tex2_coord a_uv;
-	Tex2_coord b_uv;
-	Tex2_coord c_uv;
+	int uv_indices[3]; // a_uv, b_uv, c_uv;
+	int normal_indices[3];
 	uint32_t color;
 };
 
