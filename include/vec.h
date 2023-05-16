@@ -3,16 +3,7 @@
 #include <cmath>
 #include <cstdio>
 #include <ostream>
-struct Vec4{
-	Vec4() : x(0), y(0), z(0), w(0) {};
-	Vec4(double _x, double _y, double _z, double _w) : x(_x), y(_y), z(_z), w(_w) {};
-	union{
-		struct{
-			double x, y, z, w;
-		};
-		double values[4];
-	};
-};
+
 
 template<typename T>
 struct Vec2{
@@ -63,7 +54,6 @@ struct Vec3{
 	Vec3() : x(0), y(0), z(0) {};
 	Vec3(double _x, double _y, double _z) : x(_x), y(_y), z(_z) {};
 	inline double length() const { return sqrt(x*x + y*y + z*z); };
-	inline Vec4 augmented() const { return Vec4(x, y, z, 1.0); };
 	friend std::ostream& operator << (std::ostream& out, const Vec3& vec);
 	inline Vec3& operator += (const Vec3& other){
 		x += other.x;
@@ -72,7 +62,12 @@ struct Vec3{
 		return *this;
 	};
 
-	double x, y, z;
+	union{
+		struct{ double x, y, z; };
+		struct{ double r, g, b; };
+		struct{ double alpha, beta, gamma; };
+	};
+
 };
 
 inline std::ostream& operator << (std::ostream& out, const Vec3& vec){
@@ -118,7 +113,21 @@ inline Vec3 Vec3_rotate_y(const Vec3& v, double angle){
 	return Vec3(rotated_x, v.y, rotated_z);
 }
 
+struct Vec4{
+	Vec4() : x(0), y(0), z(0), w(0) {};
+	Vec4(double _x, double _y, double _z, double _w) : x(_x), y(_y), z(_z), w(_w) {};
+	Vec2f vec2f() const { return Vec2f(x, y); };
+	union{
+		struct{
+			double x, y, z, w;
+		};
+		double values[4];
+	};
+};
+
 inline Vec3 vec3_from_vec4(const Vec4& v) { return Vec3(v.x, v.y, v.z); };
 inline Vec4 vec4_from_vec3(const Vec3& v) { return Vec4(v.x, v.y, v.z, 1.0); };
 
 typedef Vec3 Color;
+typedef Vec3 Weights;
+
