@@ -16,10 +16,12 @@
 #include "mat.h"
 #include "light.h"
 #include "texture.h"
+#include "perspective.h"
 
 
 SDL_Surface * wall_texture;
 std::unique_ptr<Model> load_cube_test();
+//std::unique_ptr<mate3d::>
 /* Constants */
 #define M_PI 3.14159265358979323846
 #define TO_RAD(d) ((d) * M_PI) / 180.0
@@ -36,9 +38,10 @@ static const int screen_x = WINDOW_W / 2;
 
 /* Globals */
 static bool running = false;
-static Fbuffer * fb = NULL;
 uint64_t prev_time;
 uint32_t renderer_flags;
+std::unique_ptr<mate3d::Fbuffer> fb;
+std::unique_ptr<mate3d::display> display;
 
 // just for testing
 std::unique_ptr<Model> cube = nullptr;
@@ -47,10 +50,6 @@ std::vector<Proj_triangle> cube_triangles;
 // transformations
 Mat4 scale_mat, translate_mat, rotate_y_mat, rotate_x_mat, rotate_z_mat;
 Mat4 perspective_proj_mat;
-
-Vec2f weak_project(const Vec3 p){
-	return Vec2f((p.x * FOV_FACTOR) / p.z, (p.y * FOV_FACTOR) / p.z);
-};
 
 static void R_input(){
 	SDL_Event e;
@@ -62,11 +61,11 @@ static void R_input(){
 };
 
 // applies transformations to a face vertices, and returns an array of 3 transformed vertices
-static inline void R_apply_transformations(const Face * face, Vec3 * transformed_vertices, const Mat4& world_matrix){
+static inline void R_apply_transformations(const Face& face, Vec3 * transformed_vertices, const Mat4& world_matrix){
 	std::fill(transformed_vertices, transformed_vertices + 3, Vec3());
 	Vec4 augmented_vertices[3];
 	for(int j = 0; j < 3; j++){
-		augmented_vertices[j] = vec4_from_vec3(cube->vertices[face->indices[j] - 1]);
+		augmented_vertices[j] = vec4_from_vec3(cube->vertices[face.indices[j] - 1]);
 		augmented_vertices[j] = world_matrix * augmented_vertices[j];
 		transformed_vertices[j] = vec3_from_vec4(augmented_vertices[j]);
 	};
@@ -87,12 +86,12 @@ static inline bool R_backface_cull_test(const Vec3 * transformed_vertices, Vec3 
 	return dot(*normal, camera_dir) > 0;
 };
 
-static inline void R_apply_projection(const Vec3 * transformed_vertices,
-		Proj_triangle * projected_triangle){
+static inline void R_apply_projection(const Vec3 * transformed_vertices, Proj_triangle& projected_triangle){
 
 	for(int j = 0; j < 3; j++){
 		Vec4 augmented = vec4_from_vec3(transformed_vertices[j]);
-		Vec4 proj_point = Mat4_mult_vec4_project(perspective_proj_mat, augmented);
+
+		Vec4 proj_point = perspective_project_vertex(perspective_proj_mat, augmented);
 
 		proj_point.x *= screen_x;
 		proj_point.y *= screen_y;
@@ -100,7 +99,7 @@ static inline void R_apply_projection(const Vec3 * transformed_vertices,
 		proj_point.x += screen_x;
 		proj_point.y += screen_y;
 
-		projected_triangle->projected_points[j] = Vec2(proj_point.x, proj_point.y);
+		projected_triangle.projected_points[j] = proj_point;
 	}
 };
 
@@ -110,13 +109,13 @@ static uint32_t light_color_apply_intensity(uint32_t light_color, float intensit
 	if(intensity < 0) intensity = 0;
 
 	uint8_t r, g, b, shaded_r, shaded_g, shaded_b;
-	unpack_color(light_color, &r, &g, &b);
+	mate3d::unpack_color(light_color, &r, &g, &b);
 
 	shaded_r = static_cast<uint8_t>(intensity * r);
 	shaded_g = static_cast<uint8_t>(intensity * g);
 	shaded_b = static_cast<uint8_t>(intensity * b);
 
-	return pack_color(shaded_r, shaded_g, shaded_b);
+	return mate3d::pack_color(shaded_r, shaded_g, shaded_b);
 }
 
 static void R_update(){
@@ -147,7 +146,7 @@ static void R_update(){
 		projected_triangle.avg_z = 0;
 
 		Vec3 transformed_vertices[3];
-		R_apply_transformations(&cube->faces[i], transformed_vertices, world_matrix);
+		R_apply_transformations(cube->faces[i], transformed_vertices, world_matrix);
 
 		// compute avg depth
 		for(int j = 0; j < 3; j++){
@@ -165,7 +164,7 @@ static void R_update(){
 		projected_triangle.face = &cube->faces[i];
 
 		// project face into a screen triangle
-		R_apply_projection(transformed_vertices, &projected_triangle);
+		R_apply_projection(transformed_vertices, projected_triangle);
 
 		cube_triangles.push_back(projected_triangle);
 	}
@@ -175,7 +174,7 @@ static void R_update(){
 };
 
 static void R_render(){
-	Fbuffer_clear(fb, 0);
+	fb->clear(0);
 	size_t n = cube_triangles.size();
 	for(size_t i = 0; i < n; i++){
 		Proj_triangle * t = &cube_triangles[i];
@@ -185,12 +184,12 @@ static void R_render(){
 
 		uint32_t * pixels = (uint32_t *)wall_texture->pixels;
 		Tex2_coord uv_coords[3] = {t->face->a_uv, t->face->b_uv, t->face->c_uv};
-		draw_triangle_tex2mapped(fb, t->projected_points, uv_coords, pixels);
+		draw_triangle_tex2mapped(*fb, t->projected_points, uv_coords, pixels);
 
 
 	}
 	cube_triangles.clear();
-	D_present_pixels(fb->pixels);
+	display->present_pixels(&fb->pixels[0]);
 };
 
 void R_cap_fps(){
@@ -207,9 +206,9 @@ void R_cap_fps(){
 };
 
 void R_run(int window_w, int window_h){
-	D_Init(window_w, window_h);
+	display = std::make_unique<mate3d::display>(window_w, window_h);
 	DIE(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) < 0, IMG_GetError());
-	fb = Fbuffer_create(window_w, window_h);
+	fb = std::make_unique<mate3d::Fbuffer>(window_w, window_h);
 	running = true;
 	prev_time = SDL_GetPerformanceCounter();
 	cube = load_cube_test();
@@ -226,7 +225,5 @@ void R_run(int window_w, int window_h){
 		R_render();
 	};
 
-	D_Quit();
-	Fbuffer_destroy(fb);
 	IMG_Quit();
 };

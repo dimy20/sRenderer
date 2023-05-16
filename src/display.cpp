@@ -6,48 +6,48 @@
 #include <assert.h>
 
 #include "error.h"
+#include "display.h"
 
-static SDL_Window * window;
-static SDL_Renderer * renderer;
-static SDL_Texture * fb_texture;
-static int w;
-static int h;
+static void D_Init(int window_w, int window_h,
+				   SDL_Window ** window,
+				   SDL_Renderer ** renderer,
+				   SDL_Texture ** fb_texture){
 
-void D_Init(int window_w, int window_h){
 	DIE((SDL_Init(SDL_INIT_VIDEO) < 0), SDL_GetError());
 
-	window = SDL_CreateWindow("3d Renderer", 
+	*window = SDL_CreateWindow("3d Renderer",
 				              SDL_WINDOWPOS_CENTERED,
 							  SDL_WINDOWPOS_CENTERED,
 							  window_w,
 							  window_h,
 							  0);
 
-	DIE(!window, SDL_GetError());
-	DIE(!(renderer = SDL_CreateRenderer(window, -1, 0)), SDL_GetError());
+	DIE(!*window, SDL_GetError());
+	DIE(!(*renderer = SDL_CreateRenderer(*window, -1, 0)), SDL_GetError());
 
-	fb_texture = SDL_CreateTexture( renderer, 
+	*fb_texture = SDL_CreateTexture(*renderer,
 									SDL_PIXELFORMAT_RGBA8888,
 									SDL_TEXTUREACCESS_STREAMING,
 									window_w,
 									window_h);
-	DIE(!fb_texture, SDL_GetError());
-
-	w = window_w;
-	h = window_h;
+	DIE(!*fb_texture, SDL_GetError());
 };
 
-void D_Quit(){
-	SDL_DestroyTexture(fb_texture);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
+mate3d::display::display(int _w, int _h) : m_w(_w), m_h(_h) {
+	D_Init(_w, _h, &m_window, &m_renderer, &m_fbtexture);
+};
+
+mate3d::display::~display(){
+	SDL_DestroyTexture(m_fbtexture);
+	SDL_DestroyRenderer(m_renderer);
+	SDL_DestroyWindow(m_window);
 	SDL_Quit();
 }
 
-void D_present_pixels(const uint32_t * pixels){
+void mate3d::display::present_pixels(const uint32_t * pixels){
 	assert(pixels != NULL);
-	int pitch = w * sizeof(uint32_t);
-	DIE((SDL_UpdateTexture(fb_texture, NULL, pixels, pitch) < 0), SDL_GetError());
-	DIE((SDL_RenderCopy(renderer, fb_texture, NULL, NULL) < 0), SDL_GetError());
-	SDL_RenderPresent(renderer);
-}
+	int pitch = m_w * sizeof(uint32_t);
+	DIE((SDL_UpdateTexture(m_fbtexture, NULL, pixels, pitch) < 0), SDL_GetError());
+	DIE((SDL_RenderCopy(m_renderer, m_fbtexture, NULL, NULL) < 0), SDL_GetError());
+	SDL_RenderPresent(m_renderer);
+};

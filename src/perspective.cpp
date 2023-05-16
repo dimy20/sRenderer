@@ -1,8 +1,12 @@
+#include "vec.h"
 #include "mat.h"
-#include <math.h>
 
-Vec4 Mat4_mult_vec4_project(const Mat4& perspective_proj_mat, const Vec4& world_vertex){
-	Vec4 projected_vertex = perspective_proj_mat * world_vertex;
+Vec2f weak_project(const Vec3& p, double fov_factor){
+	return Vec2f((p.x * fov_factor) / p.z, (p.y * fov_factor) / p.z);
+};
+
+Vec4 perspective_project_vertex(const Mat4& perspective_matrix, const Vec4& transformed_vertex){
+	Vec4 projected_vertex = perspective_matrix * transformed_vertex;
 
 	/* Perform perspective division:
 	   original Z depth, World z value of v is kept in W component of 
