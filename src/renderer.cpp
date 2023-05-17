@@ -171,13 +171,13 @@ static void R_render(){
 	Tex2_coord uv_coords[3];
 	for(size_t i = 0; i < n; i++){
 		Proj_triangle& t = cube_triangles[i];
-		//draw_triangle(*fb, t.projected_points, t.color);
-		//draw_wireframe_triangle(fb, t->projected_points, 0x00ff00ff);
+		draw_triangle(*fb, t.projected_points, t.color);
+		//draw_wireframe_triangle(*fb, t.projected_points, 0x00ff00ff);
 
-		for(size_t j = 0; j < 3; j++){
-			uv_coords[j] = cube->uv_coords[t.face->uv_indices[j] - 1];
-		}
-		draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
+		//for(size_t j = 0; j < 3; j++){
+		//	uv_coords[j] = cube->uv_coords[t.face->uv_indices[j] - 1];
+		//}
+		//draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
 	}
 
 	cube_triangles.clear();

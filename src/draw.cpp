@@ -6,6 +6,7 @@
 #include "draw.h"
 #include "vec.h"
 #include <memory>
+#include <iostream>
 #include "fbuffer.h"
 
 Vec3 color_a = {.x = 1.0, .y = 0, .z = 0};
@@ -211,7 +212,17 @@ void draw_triangle(mate3d::Fbuffer& fb, const Vec4 * points, uint32_t color){
 	Vec2f _points[3] = {points[0].vec2f(), points[1].vec2f(), points[2].vec2f() };
 	min_bounding_box(_points, fb.w, fb.h, &min_x, &max_x, &min_y, &max_y);
 
+	auto& a = points[0];
+	auto& b = points[1];
+	auto& c = points[2];
+
 	Vec2f p;
+	Vec3 b_weights;
+	Vec3 one_over_w(1 / a.w, 1 / b.w, 1 / c.w);
+
+	double p_area = edge(a.vec2f(), b.vec2f(), c.vec2f());
+	assert(p_area >= 0);
+
 	// A B C
 	// 0 1 2
 	for(int y = min_y; y <= max_y; y++){
@@ -219,19 +230,27 @@ void draw_triangle(mate3d::Fbuffer& fb, const Vec4 * points, uint32_t color){
 			p.x = x;
 			p.y = y;
 
-			double w0 = edge(points[1].vec2f(), points[2].vec2f(), p);
-			double w1 = edge(points[2].vec2f(), points[0].vec2f(), p);
-			double w2 = edge(points[0].vec2f(), points[1].vec2f(), p);
+			double w0 = edge(b.vec2f(), c.vec2f(), p);
+			double w1 = edge(c.vec2f(), a.vec2f(), p);
+			double w2 = edge(a.vec2f(), b.vec2f(), p);
 
 			if(w0 >= 0 && w1 >= 0 && w2 >= 0){ // 
-				fb.set_pixel(x, y, color);
+				b_weights.alpha = w0 / p_area;
+				b_weights.beta = w1 / p_area;
+				b_weights.gamma = 1.0 - b_weights.alpha - b_weights.beta;
+
+				double interpolated_inv_w = dot(one_over_w, b_weights);
+				if(1.0 - interpolated_inv_w < zbuffer[y * fb.w + x]){
+					fb.set_pixel(x, y, color);
+					zbuffer[y * fb.w + x] = 1.0 - interpolated_inv_w;
+				}
 			}
 		}
 	}
 
 };
 
-void draw_wireframe_triangle(mate3d::Fbuffer& fb, const Vec2f * points,  uint32_t color){
+void draw_wireframe_triangle(mate3d::Fbuffer& fb, const Vec4 * points,  uint32_t color){
 	for(int i = 0; i < 3; i++){
 		draw_line(fb, points[i].x, points[i].y,
 				      points[(i + 1) % 3].x, points[(i + 1) % 3].y, color);
