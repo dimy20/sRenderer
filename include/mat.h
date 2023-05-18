@@ -14,11 +14,11 @@ constexpr Mat4 Mat4_id(void){
 				   {0, 0, 0, 1}}};
 };
 
-constexpr Mat4 Mat4_scale(double sx, double sy, double sz){
+constexpr Mat4 Mat4_scale(const Vec3& s){
 	Mat4 mat = Mat4_id();
-	mat.m[0][0] = sx;
-	mat.m[1][1] = sy;
-	mat.m[2][2] = sz;
+	mat.m[0][0] = s.x;
+	mat.m[1][1] = s.y;
+	mat.m[2][2] = s.z;
 	return mat;
 };
 
@@ -32,11 +32,11 @@ inline Vec4 operator*(const Mat4& mat, const Vec4& vec){
 	return result;
 }
 
-constexpr Mat4 Mat4_translate(double tx, double ty, double tz){
+constexpr Mat4 Mat4_translate(const Vec3& t){
 	Mat4 result = Mat4_id();
-	result.m[0][3] = tx;
-	result.m[1][3] = ty;
-	result.m[2][3] = tz;
+	result.m[0][3] = t.x;
+	result.m[1][3] = t.y;
+	result.m[2][3] = t.z;
 	return result;
 };
 

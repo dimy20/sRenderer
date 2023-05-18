@@ -1,3 +1,8 @@
 #pragma once
 
-void R_run(int window_w, int window_h);
+namespace renderer{
+	void init(int window_w, int window_h);
+	void run();
+	void quit();
+}
+

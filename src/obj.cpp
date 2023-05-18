@@ -14,10 +14,6 @@ std::unique_ptr<Model> load_obj(const char * filename){
 	}
 
 	std::unique_ptr<Model> model = std::make_unique<Model>();
-	//TODO: have a model_init function
-	model->scale = Vec3(1, 1, 1);
-	model->rotation = Vec3(0, 0, 0);
-	model->translation = Vec3(0, 0, 0);
 
 	char line[512];
 	memset(line, 0, 512);
