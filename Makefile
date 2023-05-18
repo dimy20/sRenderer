@@ -5,8 +5,8 @@ SRC_DIR = src
 BUILD_DIR = build
 INCLUDE_DIR = include
 
-LDFLAGS = -lSDL2 -lm -lSDL2_image
-CFLAGS = -fpermissive -Wall -std=c++2a -g -O3 -I$(INCLUDE_DIR)
+LDFLAGS = -lSDL2 -lm -lSDL2_image -lSDL2_ttf
+CFLAGS = -Wall -Werror -std=c++2a -g -O3 -I$(INCLUDE_DIR)
 
 SRCS = $(shell find $(SRC_DIR) -name '*.cpp')
 OBJS = $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRCS))

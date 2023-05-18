@@ -19,6 +19,8 @@
 #include "light.h"
 #include "texture.h"
 #include "perspective.h"
+#include "fps.h"
+#include "resources.h"
 
 
 SDL_Surface * wall_texture;
@@ -27,9 +29,8 @@ SDL_Surface * wall_texture;
 #define TO_RAD(d) ((d) * M_PI) / 180.0
 #define WINDOW_W 800
 #define WINDOW_H 600
-#define TARGET_FPS 60
+
 #define FOV_FACTOR 500
-static const double frame_target_time = 1.0 / (double)TARGET_FPS;
 static Vec3 camera_position = {0, 0, 0};
 
 // screen space translations
@@ -38,11 +39,13 @@ static const int screen_x = WINDOW_W / 2;
 
 /* Globals */
 static bool running = false;
-uint64_t prev_time;
 uint32_t renderer_flags;
 std::unique_ptr<mate3d::Fbuffer> fb;
 std::unique_ptr<mate3d::display> display;
 std::vector<double> zbuffer;
+Fps fps;
+Resources * resources;
+
 
 // just for testing
 std::unique_ptr<Model> cube = nullptr;
@@ -171,31 +174,27 @@ static void R_render(){
 	Tex2_coord uv_coords[3];
 	for(size_t i = 0; i < n; i++){
 		Proj_triangle& t = cube_triangles[i];
-		draw_triangle(*fb, t.projected_points, t.color);
+		//draw_triangle(*fb, t.projected_points, t.color);
 		//draw_wireframe_triangle(*fb, t.projected_points, 0x00ff00ff);
 
-		//for(size_t j = 0; j < 3; j++){
-		//	uv_coords[j] = cube->uv_coords[t.face->uv_indices[j] - 1];
-		//}
-		//draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
+		for(size_t j = 0; j < 3; j++){
+			uv_coords[j] = cube->uv_coords[t.face->uv_indices[j] - 1];
+		}
+		draw_triangle_tex2mapped(*fb, t.projected_points, uv_coords, wall_texture);
 	}
 
 	cube_triangles.clear();
 	std::fill(zbuffer.begin(), zbuffer.end(), 1.0);
-	display->present_pixels(&fb->pixels[0]);
-};
 
-void R_cap_fps(){
-    uint64_t now = SDL_GetPerformanceCounter();
-	uint64_t clock_frequency = SDL_GetPerformanceFrequency();
+	display->put_pixels(&fb->pixels[0]);
 
-	double elapsed_secs = (now - prev_time) / (double)(clock_frequency);
-
-	if(elapsed_secs < frame_target_time){
-		SDL_Delay((uint32_t)((frame_target_time - elapsed_secs) * 1000));
+	auto fps_font = resources->get_font("fps");
+	if(fps_font != std::nullopt){
+		std::string fps_string = "fps:" + std::to_string(fps.frames());
+		display->put_text(*fps_font, fps_string);
 	}
 
-	prev_time = now;
+	display->present();
 };
 
 void R_run(int window_w, int window_h){
@@ -203,17 +202,21 @@ void R_run(int window_w, int window_h){
 	DIE(IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG) < 0, IMG_GetError());
 	fb = std::make_unique<mate3d::Fbuffer>(window_w, window_h);
 	running = true;
-	prev_time = SDL_GetPerformanceCounter();
-	cube = load_obj("assets/crab.obj");
-	wall_texture = load_texture("assets/crab.png");
+	cube = load_obj("assets/drone.obj");
+	wall_texture = load_texture("assets/drone.png");
 	zbuffer.resize(window_w * window_h, 1.0);
+
+	resources = Resources::get_instance();
+	auto fps_font = (std::make_unique<mate3d::Font>("assets/Hack-Regular.ttf", 24, display->renderer()));
+	resources->add_font("fps", std::move(fps_font));
 
 	double aspect_ratio = (double)window_h / (double)window_w;
 	perspective_proj_mat = Mat4_make_perspective(TO_RAD(60.0), aspect_ratio, 0.1, 100.0);
 
 	while(running){
+		fps.counter();
 		R_input();
-		R_cap_fps();
+		fps.cap();
 		R_update();
 		R_render();
 	};
