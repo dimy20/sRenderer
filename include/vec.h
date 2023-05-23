@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <ostream>
 
-
 template<typename T>
 struct Vec2{
 	Vec2() : x(0), y(0) {};
@@ -42,9 +41,11 @@ inline double dot(const Vec2<T>& a, const Vec2<T>& b){
 };
 
 template<typename T>
-inline Vec2<T> normalize(const Vec2<T>& a){
+inline Vec2<T>& normalize(const Vec2<T>& a){
 	double len = a.length();
-	return Vec2<T>(a.x /len, a.y / len);
+	a.x /= len;
+	a.y /= len;
+	return a;
 }
 
 typedef Vec2<int> Vec2i;
@@ -59,6 +60,13 @@ struct Vec3{
 		x += other.x;
 		y += other.y;
 		z += other.z;
+		return *this;
+	};
+
+	inline Vec3& operator -= (const Vec3& other){
+		x -= other.x;
+		y -= other.y;
+		z -= other.z;
 		return *this;
 	};
 
@@ -80,6 +88,7 @@ inline std::ostream& operator << (std::ostream& out, const Vec3& vec){
 inline Vec3 operator+(const Vec3& a, const Vec3& b){ return Vec3(a.x + b.x, a.y + b.y, a.z + b.z); }
 inline Vec3 operator-(const Vec3& a, const Vec3& b){ return Vec3(a.x - b.x, a.y - b.y, a.z - b.z); }
 inline Vec3 operator*(const Vec3& a, double t){ return Vec3(a.x * t, a.y * t, a.z * t); }
+inline Vec3 operator*(double t, const Vec3& a){ return a * t; }
 inline double dot(const Vec3& a, const Vec3&b){ return a.x*b.x + a.y*b.y + a.z*b.z; }
 
 inline Vec3 normalize(const Vec3& a){
@@ -131,3 +140,4 @@ inline Vec4 vec4_from_vec3(const Vec3& v) { return Vec4(v.x, v.y, v.z, 1.0); };
 typedef Vec3 Color;
 typedef Vec3 Weights;
 
+constexpr double to_rad(double deg){ return (deg * M_PI) / 180.0; };

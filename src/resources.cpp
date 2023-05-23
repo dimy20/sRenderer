@@ -1,9 +1,13 @@
 #include "resources.h"
+#include "error.h"
 
 using namespace mate3d;
 
-Resources::Resources(){ TTF_Init(); };
-Resources::~Resources(){  };
+Resources::Resources(){ DIE(TTF_Init() < 0 , TTF_GetError()); };
+Resources::~Resources(){
+	m_fonts.clear();
+	TTF_Quit();
+};
 Resources * Resources::get_instance(){
 	static Resources r;
 	return &r;

@@ -105,3 +105,4 @@ constexpr Mat4 Mat4_make_perspective(double fov, double aspect_ratio, double zne
 };
 
 Vec4 Mat4_mult_vec4_project(const Mat4& perspective_proj_mat, const Vec4& v);
+Mat4 look_at(const Vec3& eye, const Vec3& target, const Vec3& up);

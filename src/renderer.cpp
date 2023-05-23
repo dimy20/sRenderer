@@ -22,6 +22,8 @@
 #include "fps.h"
 #include "resources.h"
 #include "world_obj.h"
+#include "camera.h"
+#include "input.h"
 
 // just for testing
 SDL_Surface * wall_texture;
@@ -30,34 +32,26 @@ SDL_Surface * wall_texture;
 #define TO_RAD(d) ((d) * M_PI) / 180.0
 #define WINDOW_W 800
 #define WINDOW_H 600
-static Vec3 camera_position = {0, 0, 0};
-
 // screen space translations
 static const int screen_y = WINDOW_H / 2;
 static const int screen_x = WINDOW_W / 2;
 
 /* Globals */
-static bool running = false;
+Vec3 origin(0, 0, 0);
+Camera camera(Vec3(0, 0, -2.0));
 uint32_t renderer_flags;
 std::unique_ptr<mate3d::Fbuffer> fb;
 std::unique_ptr<mate3d::display> display;
 std::vector<double> zbuffer;
 Fps fps;
 Resources * resources;
-WorldObj obj(std::move(load_obj("assets/cube.obj")), Transform(Vec3(0, 0, 0), Vec3(1, 1, 1), Vec3(0, 0, 0)));
+WorldObj obj(std::move(load_obj("assets/f22.obj")), Transform(Vec3(0, 0, 0), Vec3(1, 1, 1), Vec3(0, 0, 0)));
+Input input;
 
 // transformations
 Mat4 scale_mat, translate_mat, rotate_y_mat, rotate_x_mat, rotate_z_mat;
 Mat4 perspective_proj_mat;
-
-static void R_input(){
-	SDL_Event e;
-	while(SDL_PollEvent(&e)){
-		if(e.type == SDL_QUIT){
-			running = false;
-		}
-	};
-};
+Mat4 view_matrix;
 
 // applies transformations to a face vertices, and returns an array of 3 transformed vertices
 static inline void R_apply_transformations(const Face& face, Vec3 * transformed_vertices, const Mat4& world_matrix){
@@ -65,7 +59,7 @@ static inline void R_apply_transformations(const Face& face, Vec3 * transformed_
 	Vec4 augmented_vertices[3];
 	for(int j = 0; j < 3; j++){
 		augmented_vertices[j] = vec4_from_vec3(obj.model->vertices[face.indices[j] - 1]);
-		augmented_vertices[j] = world_matrix * augmented_vertices[j];
+		augmented_vertices[j] = view_matrix * world_matrix * augmented_vertices[j];
 		transformed_vertices[j] = vec3_from_vec4(augmented_vertices[j]);
 	};
 }
@@ -80,7 +74,7 @@ static inline bool R_backface_cull_test(const Vec3 * transformed_vertices, Vec3 
 	Vec3 vec_ac = vec_c - vec_a;
 
 	*normal = normalize(cross(vec_ab, vec_ac));
-	Vec3 camera_dir = normalize(camera_position - vec_a);
+	Vec3 camera_dir = normalize(origin - vec_a);
 
 	return dot(*normal, camera_dir) > 0;
 };
@@ -118,11 +112,7 @@ static uint32_t light_color_apply_intensity(uint32_t light_color, float intensit
 }
 
 static void R_update(){
-	//cube->rotation.x += 0.01;
 	obj.transform.rotation.y += 0.01;
-	//cutransformotation.z += 0.01;
-	obj.transform.scale.x += 0.002;
-	obj.transform.scale.y += 0.001;
 
 	obj.transform.translation.x = 0;
 	obj.transform.translation.y = 0;
@@ -135,8 +125,10 @@ static void R_update(){
 	rotate_x_mat = Mat4_make_rotate_x(obj.transform.rotation.x);
 	rotate_z_mat = Mat4_make_rotate_z(obj.transform.rotation.z);
 
+	camera.update(input);
 	// make world matrix
 	Mat4 world_matrix = translate_mat * rotate_y_mat * rotate_z_mat * Mat4_id();
+	view_matrix = camera.view_matrix();
 	assert(obj.model->faces.size() != 0);
 
 	obj.proj_triangles_num = 0;
@@ -190,10 +182,9 @@ static void R_render(){
 };
 
 void renderer::run(){
-	running = true;
-	while(running){
+	while(!input.quit){
 		fps.counter();
-		R_input();
+		input.update();
 		fps.cap();
 		R_update();
 		R_render();
@@ -208,7 +199,7 @@ void renderer::init(int window_w, int window_h){
 	fb = std::make_unique<mate3d::Fbuffer>(window_w, window_h);
 
 	//TODO: Move texture to resources:
-	wall_texture = load_texture("assets/cube.png");
+	wall_texture = load_texture("assets/f22.png");
 	zbuffer.resize(window_w * window_h, 1.0);
 
 	// initialize resources
