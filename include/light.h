@@ -11,3 +11,4 @@ struct Light{
 };
 
 extern Light light;
+uint32_t light_color_apply_intensity(uint32_t light_color, float intensity);

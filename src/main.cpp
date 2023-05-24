@@ -2,10 +2,9 @@
 
 #define WINDOW_W 800
 #define WINDOW_H 600
-#include "renderer.h"
+#include "engine.h"
 
 int main(){
-	renderer::init(WINDOW_W, WINDOW_H);
-	renderer::run();
-	renderer::quit();
+	Engine engine(WINDOW_W, WINDOW_H);
+	engine.run();
 };
